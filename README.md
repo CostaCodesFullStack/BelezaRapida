@@ -49,7 +49,7 @@ Certifique-se de ter os seguintes itens instalados no seu ambiente de desenvolvi
 ### 1. Clonando o Repositório
 
 ```bash
-git clone https://github.com/SeuUsuario/ecommerce.git
+git clone https://github.com/CostaCodesFullStack/BelezaRapida.git
 cd ecommerce
 ```
 
