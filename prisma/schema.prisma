@@ -1,0 +1,233 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Profile {
+  id         String    @id @default(cuid())
+  supabaseId String    @unique // ID do usuário no Supabase Auth
+  email      String    @unique
+  name       String?
+  phone      String?
+  cpf        String?   @unique
+  avatar_url String?
+  role       UserRole  @default(CUSTOMER)
+  
+  addresses Address[]
+  orders    Order[]
+  reviews   Review[]
+  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("profiles")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  zipCode     String   // CEP
+  street      String
+  number      String
+  complement  String?
+  neighborhood String
+  city        String
+  state       String
+  isDefault   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("addresses")
+}
+
+model Product {
+  id                String    @id @default(cuid())
+  name              String    @unique
+  slug              String    @unique
+  description       String    @db.Text
+  images            String[]  // JSON array of image URLs
+  category          ProductCategory
+  price             Float     // Preço em reais (ex: 99.99)
+  compare_at_price  Float?    // Preço original para desconto
+  stock             Int       @default(0)
+  sku               String?   @unique
+  
+  // Promoções
+  is_featured       Boolean   @default(false)
+  is_buy_one_get_two Boolean  @default(false) // Compre 1 Leve 2
+  is_active         Boolean   @default(true)
+  
+  // Metadata
+  weight            Float?    // em gramas, para cálculo de frete
+  width             Float?    // em cm
+  height            Float?    // em cm
+  depth             Float?    // em cm
+  
+  orderItems        OrderItem[]
+  reviews           Review[]
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([category])
+  @@index([is_featured])
+  @@index([is_active])
+  @@map("products")
+}
+
+enum ProductCategory {
+  SKINCARE
+  HAIRCARE
+  MAKEUP
+  SUPPLEMENTS
+  BODY
+  FRAGRANCE
+}
+
+model Order {
+  id                String       @id @default(cuid())
+  profileId         String
+  profile           Profile      @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  // Cliente info snapshot
+  customerName      String
+  customerEmail     String
+  customerPhone     String
+  customerCpf       String?
+  
+  // Endereço
+  shippingAddress   String       @db.Text // JSON stringified
+  
+  // Itens e valores
+  items             OrderItem[]
+  subtotal          Float
+  discount          Float        @default(0)
+  shippingCost      Float        @default(0)
+  total             Float
+  
+  // Cupom aplicado
+  couponId          String?
+  coupon            Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  
+  // Status
+  status            OrderStatus  @default(PENDING_PAYMENT)
+  
+  // Pagamento
+  yamipiOrderId     String?      @unique // ID do pedido na Yampi
+  yamipiCheckoutUrl String?
+  paidAt            DateTime?
+  
+  // Envio
+  trackingCode      String?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  
+  // Misc
+  notes             String?
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([profileId])
+  @@index([status])
+  @@index([yamipiOrderId])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  quantity  Int
+  price     Float    // Preço unitário no momento da compra
+  
+  createdAt DateTime @default(now())
+
+  @@unique([orderId, productId])
+  @@map("order_items")
+}
+
+model Coupon {
+  id                String       @id @default(cuid())
+  code              String       @unique
+  type              CouponType
+  value             Float        // Percentual (0-100) ou valor fixo (em reais)
+  
+  // Limites
+  min_order_value   Float?       // Valor mínimo do pedido para usar o cupom
+  usage_limit       Int?         // Limite de usos totais
+  usage_count       Int          @default(0)
+  max_uses_per_user Int?         // Máximo de usos por cliente
+  
+  // Validade
+  active            Boolean      @default(true)
+  valid_from        DateTime?
+  valid_until       DateTime?
+  
+  orders            Order[]
+  
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([code])
+  @@index([active])
+  @@map("coupons")
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  rating    Int      // 1-5
+  title     String
+  content   String   @db.Text
+  images    String[] // JSON array de URLs de imagens
+  
+  approved  Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, profileId])
+  @@index([productId])
+  @@index([approved])
+  @@map("reviews")
+}
