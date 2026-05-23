@@ -1,10 +1,9 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { ProductCard } from '@/components/product/product-card'
 import { STORE_CONFIG, SEO_CONFIG, SHIPPING_CONFIG } from '@/lib/constants'
 import { CATEGORY_LABELS, type ProductCategory } from '@/types/database'
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/prisma/client'
 import { formatCurrency } from '@/lib/format'
 import { 
   Sparkles, 
@@ -25,23 +24,31 @@ const CATEGORY_ICONS: Record<ProductCategory, string> = {
 }
 
 export default async function HomePage() {
-  const supabase = await createClient()
-  
-  // Buscar produtos em destaque
-  const { data: featuredProducts } = await supabase
-    .from('products')
-    .select('*')
-    .eq('is_featured', true)
-    .eq('is_active', true)
-    .limit(8)
+  // Buscar produtos em destaque usando Prisma
+  let featuredProducts: Awaited<ReturnType<typeof prisma.product.findMany>> = []
+  let promoProducts: Awaited<ReturnType<typeof prisma.product.findMany>> = []
 
-  // Buscar produtos com promoção "Leve 2 Pague 1"
-  const { data: promoProducts } = await supabase
-    .from('products')
-    .select('*')
-    .eq('is_buy_one_get_two', true)
-    .eq('is_active', true)
-    .limit(4)
+  try {
+    featuredProducts = await prisma.product.findMany({
+      where: {
+        is_featured: true,
+        is_active: true,
+      },
+      take: 8,
+    })
+
+    // Buscar produtos com promoção "Leve 2 Pague 1"
+    promoProducts = await prisma.product.findMany({
+      where: {
+        is_buy_one_get_two: true,
+        is_active: true,
+      },
+      take: 4,
+    })
+  } catch (error) {
+    // Se a tabela não existir ainda, continuar com arrays vazios
+    console.error('[v0] Erro ao buscar produtos:', error)
+  }
 
   const categories = Object.entries(CATEGORY_LABELS) as [ProductCategory, string][]
 
