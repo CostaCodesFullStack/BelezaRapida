@@ -142,6 +142,19 @@ export interface CartItem {
   quantity: number
 }
 
+/**
+ * Versão flat de CartItem para uso em formulários e checkout
+ * (campos individuais conforme contrato de API)
+ */
+export interface CartItemFlat {
+  id: string
+  productId: string
+  name: string
+  price: number
+  quantity: number
+  imageUrl: string | null
+}
+
 export interface ShippingOption {
   id: string
   name: string
@@ -151,6 +164,18 @@ export interface ShippingOption {
     name: string
     picture: string
   }
+}
+
+/**
+ * Versão simplificada de ShippingOption para exibição na UI
+ */
+export interface ShippingOptionSimple {
+  id: string
+  name: string
+  price: number
+  /** Prazo em dias úteis */
+  days: number
+  company: string
 }
 
 // Tipos para respostas de API
