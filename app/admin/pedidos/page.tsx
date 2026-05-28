@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/admin/data-table";
+import { OrdersTable } from "@/components/admin/orders-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Eye } from "lucide-react";
 import { prisma } from "@/prisma/client";
 import { OrderStatus } from "@prisma/client";
 
@@ -18,7 +16,10 @@ const statusLabels: Record<OrderStatus, string> = {
   REFUNDED: "Reembolsado",
 };
 
-const statusVariants: Record<OrderStatus, "default" | "secondary" | "destructive" | "outline"> = {
+const statusVariants: Record<
+  OrderStatus,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
   PENDING_PAYMENT: "secondary",
   PAID: "default",
   SHIPPED: "default",
@@ -37,9 +38,7 @@ export default async function OrdersPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Pedidos</h1>
-        <p className="text-muted-foreground">
-          Gerenciar pedidos dos clientes
-        </p>
+        <p className="text-muted-foreground">Gerenciar pedidos dos clientes</p>
       </div>
 
       <Card>
@@ -47,57 +46,10 @@ export default async function OrdersPage() {
           <CardTitle>Lista de Pedidos</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={[
-              {
-                key: "id",
-                label: "ID Pedido",
-                render: (value: string) => value.slice(-8).toUpperCase(),
-              },
-              {
-                key: "customerName",
-                label: "Cliente",
-              },
-              {
-                key: "createdAt",
-                label: "Data",
-                render: (value: Date) =>
-                  new Date(value).toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }),
-              },
-              {
-                key: "total",
-                label: "Total",
-                render: (value: number) => `R$ ${value.toFixed(2)}`,
-              },
-              {
-                key: "status",
-                label: "Status",
-                render: (value: OrderStatus) => (
-                  <Badge variant={statusVariants[value] || "default"}>
-                    {statusLabels[value] || value}
-                  </Badge>
-                ),
-              },
-              {
-                key: "actions",
-                label: "Ações",
-                render: (_, row) => (
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/admin/pedidos/${row.id}`}>
-                      <Eye className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                ),
-              },
-            ]}
-            data={orders}
-            loading={false}
+          <OrdersTable
+            orders={orders}
+            statusLabels={statusLabels}
+            statusVariants={statusVariants}
           />
         </CardContent>
       </Card>

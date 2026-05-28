@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/admin/data-table";
+import { ProductsTable } from "@/components/admin/products-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { prisma } from "@/prisma/client";
 import { ProductCategory } from "@prisma/client";
@@ -45,57 +44,7 @@ export default async function ProductsPage() {
           <CardTitle>Lista de Produtos</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable
-            columns={[
-              {
-                key: "images",
-                label: "Foto",
-                render: (value) => (
-                  <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                    {value && value.length > 0 ? (
-                      <img src={value[0]} alt="Produto" className="object-cover w-full h-full" />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Sem foto</span>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: "name",
-                label: "Nome",
-              },
-              {
-                key: "category",
-                label: "Categoria",
-                render: (value: ProductCategory) => categoryLabels[value] || value,
-              },
-              {
-                key: "price",
-                label: "Preço",
-                render: (value: number) => `R$ ${value.toFixed(2)}`,
-              },
-              {
-                key: "stock",
-                label: "Estoque",
-                render: (value: number) => (
-                  <Badge variant={value > 0 ? "default" : "destructive"}>
-                    {value} unidades
-                  </Badge>
-                ),
-              },
-              {
-                key: "is_active",
-                label: "Status",
-                render: (value: boolean) => (
-                  <Badge variant={value ? "default" : "outline"}>
-                    {value ? "Ativo" : "Inativo"}
-                  </Badge>
-                ),
-              },
-            ]}
-            data={products}
-            loading={false}
-          />
+          <ProductsTable products={products} categoryLabels={categoryLabels} />
         </CardContent>
       </Card>
     </div>

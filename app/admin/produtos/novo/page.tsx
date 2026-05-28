@@ -6,8 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ImagePlus } from "lucide-react";
+import { ArrowLeft, ImagePlus, X } from "lucide-react";
 import { createProductAction } from "@/actions/admin";
+import { createClient } from "@/lib/supabase/client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,7 @@ const productSchema = z.object({
   stock: z.string().refine((val) => !isNaN(parseInt(val, 10)) && parseInt(val, 10) >= 0, "Estoque inválido"),
   is_featured: z.boolean().default(false),
   is_buy_one_get_two: z.boolean().default(false),
+  images: z.array(z.string()).optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -49,6 +51,8 @@ type ProductFormValues = z.infer<typeof productSchema>;
 export default function NewProductPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -65,16 +69,57 @@ export default function NewProductPage() {
     },
   });
 
-  const onSubmit = (data: ProductFormValues) => {
-    startTransition(async () => {
-      const result = await createProductAction(data);
-      if (result.success) {
-        toast.success("Produto criado com sucesso!");
-        router.push("/admin/produtos");
-      } else {
-        toast.error(result.error || "Erro ao criar produto");
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setImageFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const onSubmit = async (data: ProductFormValues) => {
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const imageUrls: string[] = [];
+
+      for (const file of imageFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `produtos/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('produtos')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('produtos')
+          .getPublicUrl(filePath);
+
+        imageUrls.push(publicUrl);
       }
-    });
+
+      const productData = { ...data, images: imageUrls };
+      
+      startTransition(async () => {
+        const result = await createProductAction(productData);
+        if (result.success) {
+          toast.success("Produto criado com sucesso!");
+          router.push("/admin/produtos");
+        } else {
+          toast.error(result.error || "Erro ao criar produto");
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao fazer upload das imagens.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -93,23 +138,39 @@ export default function NewProductPage() {
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="md:col-span-2">
               <CardHeader>
-                <CardTitle>Imagens do Produto (Mock)</CardTitle>
+                <CardTitle>Imagens do Produto</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div
-                      key={i}
-                      className="aspect-square rounded-md border-2 border-dashed border-muted flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      <ImagePlus className="h-6 w-6 mb-2" />
-                      <span className="text-xs">Upload</span>
+                  {imageFiles.map((file, i) => (
+                    <div key={i} className="relative aspect-square rounded-md border overflow-hidden group">
+                      <img 
+                        src={URL.createObjectURL(file)} 
+                        alt="preview" 
+                        className="object-cover w-full h-full"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
                   ))}
+                  
+                  <label className="aspect-square rounded-md border-2 border-dashed border-muted flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer">
+                    <ImagePlus className="h-6 w-6 mb-2" />
+                    <span className="text-xs">Upload</span>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleImageChange}
+                    />
+                  </label>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  * Este é um placeholder visual. O upload real de imagens seria implementado aqui.
-                </p>
               </CardContent>
             </Card>
 
@@ -288,8 +349,8 @@ export default function NewProductPage() {
             <Button variant="outline" type="button" onClick={() => router.back()}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Salvando..." : "Salvar Produto"}
+            <Button type="submit" disabled={isPending || uploading}>
+              {isPending || uploading ? "Salvando..." : "Salvar Produto"}
             </Button>
           </div>
         </form>

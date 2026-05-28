@@ -216,7 +216,7 @@ export async function sendOrderStatusUpdateEmail(
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${appUrl}/conta/pedidos/${orderId}"
+              <a href="${appUrl}/minha-conta/pedidos/${orderId}"
                  style="display: inline-block; background-color: #c2185b; color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold;">
                 Ver Detalhes do Pedido
               </a>

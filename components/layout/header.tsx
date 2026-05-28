@@ -27,6 +27,7 @@ import {
   Heart,
   X,
   ChevronDown,
+  ShieldCheck,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -34,6 +35,7 @@ interface HeaderProps {
   user?: {
     id: string
     email: string
+    isAdmin?: boolean
   } | null
 }
 
@@ -181,6 +183,16 @@ export function Header({ user }: HeaderProps) {
               <span className="sr-only">Buscar</span>
             </Button>
 
+            {/* Painel Admin Desktop */}
+            {user?.isAdmin && (
+              <Button variant="outline" size="sm" asChild className="hidden lg:flex border-primary/20 bg-primary/5 text-primary hover:bg-primary/10">
+                <Link href="/admin">
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Admin
+                </Link>
+              </Button>
+            )}
+
             {/* User Menu */}
             {user ? (
               <DropdownMenu>
@@ -213,6 +225,14 @@ export function Header({ user }: HeaderProps) {
                       Favoritos
                     </Link>
                   </DropdownMenuItem>
+                  {user.isAdmin && (
+                    <DropdownMenuItem asChild className="text-primary font-medium focus:bg-primary/10 focus:text-primary">
+                      <Link href="/admin">
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Painel Admin
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />

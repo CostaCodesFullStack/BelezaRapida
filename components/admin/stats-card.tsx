@@ -1,13 +1,21 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LucideIcon } from "lucide-react";
+import {
+  DollarSign,
+  ShoppingCart,
+  TrendingUp,
+  Package,
+  type LucideIcon,
+} from "lucide-react";
+
+type IconName = "dollar" | "cart" | "trend" | "box";
 
 interface StatsCardProps {
   title: string;
   value: string | number;
   description?: string;
-  icon?: LucideIcon;
+  iconName?: IconName;
   trend?: {
     value: number;
     label: string;
@@ -15,13 +23,22 @@ interface StatsCardProps {
   };
 }
 
+const icons: Record<IconName, LucideIcon> = {
+  dollar: DollarSign,
+  cart: ShoppingCart,
+  trend: TrendingUp,
+  box: Package,
+};
+
 export function StatsCard({
   title,
   value,
   description,
-  icon: Icon,
+  iconName,
   trend,
 }: StatsCardProps) {
+  const Icon = iconName ? icons[iconName] : null;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

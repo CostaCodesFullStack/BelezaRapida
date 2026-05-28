@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/prisma/client'
 import { ProductGallery } from '@/components/product/product-gallery'
 import { ProductInfo } from '@/components/product/product-info'
 import { ProductTabs } from '@/components/product/product-tabs'
@@ -15,66 +15,88 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
   
-  const { data: product } = await supabase
-    .from('products')
-    .select('name, description')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single()
+  const product = await prisma.product.findFirst({
+    where: { slug, is_active: true },
+    select: { name: true, description: true, images: true }
+  })
 
   if (!product) {
     return { title: 'Produto não encontrado' }
   }
 
+  const storeName = "Beleza Rápida"; // Nome da loja
+
   return {
-    title: product.name,
-    description: product.description || `Compre ${product.name} na Beleza Rápida`,
+    title: `${product.name} | ${storeName}`,
+    description: product.description,
+    openGraph: {
+      title: `${product.name} | ${storeName}`,
+      description: product.description,
+      images: product.images && product.images.length > 0 ? [product.images[0]] : [],
+    }
   }
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
-  const supabase = await createClient()
   
   // Buscar produto
-  const { data: product } = await supabase
-    .from('products')
-    .select('*')
-    .eq('slug', slug)
-    .eq('is_active', true)
-    .single()
+  const product = await prisma.product.findFirst({
+    where: { slug, is_active: true }
+  })
 
   if (!product) {
     notFound()
   }
 
   // Buscar avaliações aprovadas
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('*')
-    .eq('product_id', product.id)
-    .eq('is_approved', true)
-    .order('created_at', { ascending: false })
-    .limit(10)
+  const reviews = await prisma.review.findMany({
+    where: { productId: product.id, approved: true },
+    orderBy: { createdAt: 'desc' },
+    take: 10
+  })
 
   // Buscar produtos relacionados (mesma categoria)
-  const { data: relatedProducts } = await supabase
-    .from('products')
-    .select('*')
-    .eq('category', product.category)
-    .eq('is_active', true)
-    .neq('id', product.id)
-    .limit(4)
+  const relatedProducts = await prisma.product.findMany({
+    where: {
+      category: product.category,
+      is_active: true,
+      id: { not: product.id }
+    },
+    take: 4
+  })
 
   // Calcular média de avaliações
-  const averageRating = reviews && reviews.length > 0
+  const averageRating = reviews.length > 0
     ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length
     : 0
 
+  // JSON-LD Schema Markup
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description,
+    image: product.images,
+    offers: {
+      '@type': 'Offer',
+      price: product.price,
+      priceCurrency: 'BRL',
+      availability: product.stock > 0 
+        ? 'https://schema.org/InStock' 
+        : 'https://schema.org/OutOfStock'
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Schema Markup */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      
       {/* Breadcrumbs */}
       <nav className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/" className="hover:text-foreground">

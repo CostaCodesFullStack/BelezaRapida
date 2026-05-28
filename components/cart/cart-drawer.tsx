@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useCartStore } from "@/lib/store/cart";
@@ -19,6 +19,9 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { calculateShippingAction } from "@/actions/shipping";
 import {
   Minus,
   Plus,
@@ -41,7 +44,7 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [zipCode, setZipCode] = useState("");
   const [shippingOptions, setShippingOptions] = useState<any[]>([]);
-  const [loadingShipping, setLoadingShipping] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   const {
     items,
@@ -94,42 +97,34 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
     }
   };
 
-  const handleCalculateShipping = async () => {
-    if (!zipCode.trim() || zipCode.length < 8) {
+  const handleCalculateShipping = () => {
+    const cleanCep = zipCode.replace(/\D/g, "");
+    if (!cleanCep || cleanCep.length < 8) {
       toast.error("CEP inválido");
       return;
     }
 
-    setLoadingShipping(true);
-    try {
-      const response = await fetch("/api/calculate-shipping", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          zipCode: zipCode.replace(/\D/g, ""),
-          items,
-        }),
+    startTransition(async () => {
+      const result = await calculateShippingAction({
+        destinationCep: cleanCep,
+        cartItems: items.map(item => ({
+          productId: item.product.id,
+          quantity: item.quantity
+        }))
       });
 
-      if (!response.ok) {
-        throw new Error("Erro ao calcular frete");
+      if (!result.success) {
+        toast.error(result.error || "Erro ao calcular frete");
+        setShippingOptions([]);
+      } else {
+        const options = result.options || [];
+        setShippingOptions(options);
+        if (options.length > 0) {
+          setShipping(options[0]);
+        }
+        toast.success("Frete calculado com sucesso!");
       }
-
-      const options = await response.json();
-      setShippingOptions(options);
-
-      if (options.length > 0) {
-        // Selecionar a primeira opção automaticamente
-        setShipping(options[0]);
-      }
-
-      toast.success("Frete calculado!");
-    } catch (error) {
-      toast.error("Erro ao calcular frete");
-      setShippingOptions([]);
-    } finally {
-      setLoadingShipping(false);
-    }
+    });
   };
 
   if (!mounted) {
@@ -312,49 +307,52 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
               <Input
                 placeholder="00000-000"
                 value={zipCode}
-                onChange={(e) => setZipCode(e.target.value)}
+                onChange={(e) => {
+                  let v = e.target.value.replace(/\D/g, "");
+                  v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+                  setZipCode(v.slice(0, 9));
+                }}
                 maxLength={9}
                 className="text-sm"
               />
               <Button
                 size="sm"
                 onClick={handleCalculateShipping}
-                disabled={loadingShipping || items.length === 0}
+                disabled={isPending || items.length === 0}
                 className="text-xs"
               >
-                {loadingShipping ? "Calculando..." : "Calcular"}
+                {isPending ? "Calculando..." : "Calcular"}
               </Button>
             </div>
 
             {shippingOptions.length > 0 && (
-              <div className="space-y-2 rounded-lg bg-muted p-3">
-                {shippingOptions.map((option, idx) => (
-                  <label
-                    key={idx}
-                    className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-background/50"
-                  >
-                    <input
-                      type="radio"
-                      name="shipping"
-                      checked={shipping?.id === option.id}
-                      onChange={() => setShipping(option)}
-                    />
-                    <div className="flex-1">
-                      <p className="text-xs font-medium">{option.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {option.deadline} dias úteis
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold">
-                      {option.price === 0 ? (
-                        <span className="text-green-600">Grátis</span>
-                      ) : (
-                        formatCurrency(option.price)
-                      )}
-                    </span>
-                  </label>
+              <RadioGroup
+                value={shipping?.id}
+                onValueChange={(val) => {
+                  const selected = shippingOptions.find(opt => opt.id === val);
+                  if (selected) setShipping(selected);
+                }}
+                className="space-y-2 rounded-lg bg-muted p-3 mt-3"
+              >
+                {shippingOptions.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-2 rounded hover:bg-background/50 p-1">
+                    <RadioGroupItem value={option.id} id={`ship-${option.id}`} />
+                    <Label htmlFor={`ship-${option.id}`} className="flex flex-1 items-center justify-between cursor-pointer">
+                      <div>
+                        <p className="text-xs font-medium">{option.name}</p>
+                        <p className="text-xs text-muted-foreground">{option.delivery_time} dias úteis</p>
+                      </div>
+                      <span className="text-xs font-semibold">
+                        {option.price === 0 ? (
+                          <span className="text-green-600">Grátis</span>
+                        ) : (
+                          formatCurrency(option.price)
+                        )}
+                      </span>
+                    </Label>
+                  </div>
                 ))}
-              </div>
+              </RadioGroup>
             )}
 
             {subtotal > 0 &&

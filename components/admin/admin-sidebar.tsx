@@ -14,6 +14,8 @@ import {
   LogOut,
   Menu,
   X,
+  User,
+  Store,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -44,6 +46,11 @@ const menuItems = [
     href: "/admin/avaliacoes",
     icon: MessageSquare,
   },
+  {
+    label: "Usuarios",
+    href: "/admin/usuarios",
+    icon: User,
+  }
 ];
 
 export function AdminSidebar() {
@@ -96,7 +103,9 @@ export function AdminSidebar() {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
+              item.href === "/admin"
+                ? pathname === "/admin"
+                : pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
               <Link key={item.href} href={item.href}>
@@ -114,9 +123,18 @@ export function AdminSidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 border-t p-4">
+        <div className="absolute bottom-0 left-0 right-0 border-t p-4 space-y-2">
+          <Link href="/">
+            <Button
+              variant="outline"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
+            >
+              <Store className="mr-2 h-5 w-5" />
+              Voltar para Loja
+            </Button>
+          </Link>
           <Button
-            variant="outline"
+            variant="destructive"
             className="w-full justify-start"
             onClick={handleSignOut}
           >

@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { ProductGrid } from '@/components/product/product-grid'
 import { ProductFilters } from '@/components/product/product-filters'
-import { createClient } from '@/lib/supabase/server'
+import { prisma } from '@/prisma/client'
 import { CATEGORY_LABELS, type ProductCategory } from '@/types/database'
 import { PAGINATION_CONFIG } from '@/lib/constants'
 import { Button } from '@/components/ui/button'
@@ -26,58 +26,67 @@ interface ProductsPageProps {
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams
-  const supabase = await createClient()
   
   const page = Math.max(1, parseInt(params.pagina || '1'))
   const limit = PAGINATION_CONFIG.productsPerPage
   const offset = (page - 1) * limit
 
-  // Build query
-  let query = supabase
-    .from('products')
-    .select('*', { count: 'exact' })
-    .eq('is_active', true)
+  // Filtros padrão do Prisma
+  const where: any = { is_active: true }
 
   // Filter by search
   if (params.busca) {
-    query = query.or(`name.ilike.%${params.busca}%,description.ilike.%${params.busca}%`)
+    where.OR = [
+      { name: { contains: params.busca, mode: 'insensitive' } },
+      { description: { contains: params.busca, mode: 'insensitive' } }
+    ]
   }
 
   // Filter by category
   if (params.categoria && params.categoria in CATEGORY_LABELS) {
-    query = query.eq('category', params.categoria)
+    where.category = params.categoria
   }
 
   // Filter by price range
   if (params.preco) {
     const [min, max] = params.preco.split('-')
-    if (min) query = query.gte('price', parseFloat(min))
-    if (max) query = query.lte('price', parseFloat(max))
+    if (min || max) {
+      where.price = {}
+      if (min) where.price.gte = parseFloat(min)
+      if (max) where.price.lte = parseFloat(max)
+    }
   }
 
   // Sort
+  const orderBy: any = []
   switch (params.ordenar) {
     case 'price_asc':
-      query = query.order('price', { ascending: true })
+      orderBy.push({ price: 'asc' })
       break
     case 'price_desc':
-      query = query.order('price', { ascending: false })
+      orderBy.push({ price: 'desc' })
       break
     case 'newest':
-      query = query.order('created_at', { ascending: false })
+      orderBy.push({ createdAt: 'desc' })
       break
     case 'name_asc':
-      query = query.order('name', { ascending: true })
+      orderBy.push({ name: 'asc' })
       break
     default:
       // Relevance: featured first, then by created_at
-      query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false })
+      orderBy.push({ is_featured: 'desc' }, { createdAt: 'desc' })
   }
 
-  // Pagination
-  query = query.range(offset, offset + limit - 1)
-
-  const { data: products, count } = await query
+  // Fetch from Prisma
+  const [products, count] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy,
+      skip: offset,
+      take: limit,
+    }),
+    prisma.product.count({ where })
+  ])
 
   const totalPages = Math.ceil((count || 0) / limit)
   const hasNextPage = page < totalPages
@@ -122,7 +131,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       {/* Product Grid */}
       <div className="mt-8">
         <ProductGrid 
-          products={products || []} 
+          products={products as any} 
           emptyMessage={
             params.busca
               ? `Nenhum produto encontrado para "${params.busca}"`

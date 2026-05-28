@@ -7,17 +7,24 @@ import { useCartStore } from '@/lib/store/cart'
 import type { Product } from '@/types/database'
 import { formatCurrency, calculateDiscountPercentage } from '@/lib/format'
 import { ShoppingBag, Sparkles, Check } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import { FavoriteButton } from './favorite-button'
 
 interface ProductCardProps {
   product: Product
+  isFavorited?: boolean
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, isFavorited = false }: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const addItem = useCartStore((state) => state.addItem)
   const existingItem = useCartStore((state) => state.getItemByProductId(product.id))
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -80,6 +87,14 @@ export function ProductCard({ product }: ProductCardProps) {
             <Sparkles className="h-12 w-12 text-muted-foreground/30" />
           </div>
         )}
+        
+        {/* Favorite Button */}
+        <div className="absolute right-3 top-3 z-20">
+          <FavoriteButton 
+            productId={product.id} 
+            isInitiallyFavorited={isFavorited} 
+          />
+        </div>
       </div>
 
       {/* Content */}
@@ -112,7 +127,7 @@ export function ProductCard({ product }: ProductCardProps) {
               <Check className="mr-2 h-4 w-4" />
               Adicionado
             </>
-          ) : existingItem ? (
+          ) : (isMounted && existingItem) ? (
             <>
               <ShoppingBag className="mr-2 h-4 w-4" />
               Adicionar mais
