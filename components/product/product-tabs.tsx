@@ -1,23 +1,23 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ReviewList } from './review-list'
-import { ReviewForm } from './review-form'
-import type { Product, Review } from '@/types/database'
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReviewList } from "./review-list";
+import { ReviewForm } from "./review-form";
+import type { Product, Review } from "@/types/database";
 
 interface ProductTabsProps {
-  product: Product
-  reviews: Review[]
+  product: Product;
+  reviews: Review[];
 }
 
 export function ProductTabs({ product, reviews }: ProductTabsProps) {
-  const [localReviews, setLocalReviews] = useState(reviews)
+  const [localReviews, setLocalReviews] = useState(reviews);
 
   const handleReviewAdded = (newReview: Review) => {
     // Add the review to the local state (will appear as pending moderation)
-    setLocalReviews((prev) => [newReview, ...prev])
-  }
+    setLocalReviews((prev) => [newReview, ...prev]);
+  };
 
   return (
     <Tabs defaultValue="description" className="w-full">
@@ -28,14 +28,6 @@ export function ProductTabs({ product, reviews }: ProductTabsProps) {
         >
           Descrição
         </TabsTrigger>
-        {product.how_to_use && (
-          <TabsTrigger
-            value="how-to-use"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-          >
-            Como Usar
-          </TabsTrigger>
-        )}
         <TabsTrigger
           value="reviews"
           className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -58,29 +50,19 @@ export function ProductTabs({ product, reviews }: ProductTabsProps) {
         </div>
       </TabsContent>
 
-      {product.how_to_use && (
-        <TabsContent value="how-to-use" className="mt-6">
-          <div className="prose prose-gray max-w-none">
-            <p className="whitespace-pre-line text-muted-foreground leading-relaxed">
-              {product.how_to_use}
-            </p>
-          </div>
-        </TabsContent>
-      )}
-
       <TabsContent value="reviews" className="mt-6">
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <ReviewList reviews={localReviews} />
           </div>
           <div>
-            <ReviewForm 
-              productId={product.id} 
+            <ReviewForm
+              productId={product.id}
               onReviewAdded={handleReviewAdded}
             />
           </div>
         </div>
       </TabsContent>
     </Tabs>
-  )
+  );
 }

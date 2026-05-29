@@ -1,6 +1,8 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient() {
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 interface OrderEmailData {
   customerName: string;
@@ -93,7 +95,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
       </html>
     `;
 
-    const response = await resend.emails.send({
+    const response = await getResendClient().emails.send({
       from: process.env.RESEND_FROM_EMAIL || "noreply@example.com",
       to: data.customerEmail,
       subject: `Pedido Confirmado - ${data.orderId}`,
@@ -161,7 +163,7 @@ export async function sendWelcomeEmail(
       </html>
     `;
 
-    const response = await resend.emails.send({
+    const response = await getResendClient().emails.send({
       from: process.env.RESEND_FROM_EMAIL || "noreply@example.com",
       to: customerEmail,
       subject: "Bem-vindo(a) à Beleza Rápida!",
@@ -236,7 +238,7 @@ export async function sendOrderStatusUpdateEmail(
       </html>
     `;
 
-    const response = await resend.emails.send({
+    const response = await getResendClient().emails.send({
       from: process.env.RESEND_FROM_EMAIL || "noreply@example.com",
       to: email,
       subject: `Pedido ${orderId} — Status atualizado: ${statusLabel}`,

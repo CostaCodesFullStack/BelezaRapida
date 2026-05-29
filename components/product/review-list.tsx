@@ -1,9 +1,9 @@
-import type { Review } from '@/types/database'
-import { Star, User } from 'lucide-react'
-import { formatRelativeDate } from '@/lib/format'
+import type { Review } from "@/types/database";
+import { Star, User } from "lucide-react";
+import { formatRelativeDate } from "@/lib/format";
 
 interface ReviewListProps {
-  reviews: Review[]
+  reviews: Review[];
 }
 
 export function ReviewList({ reviews }: ReviewListProps) {
@@ -14,15 +14,15 @@ export function ReviewList({ reviews }: ReviewListProps) {
           Este produto ainda não possui avaliações. Seja o primeiro a avaliar!
         </p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold">
-        {reviews.length} {reviews.length === 1 ? 'Avaliação' : 'Avaliações'}
+        {reviews.length} {reviews.length === 1 ? "Avaliação" : "Avaliações"}
       </h3>
-      
+
       <div className="space-y-4">
         {reviews.map((review) => (
           <div key={review.id} className="rounded-lg border p-4">
@@ -32,38 +32,38 @@ export function ReviewList({ reviews }: ReviewListProps) {
                   <User className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-medium">{review.author_name}</p>
+                  <p className="font-medium">Usuário Anônimo</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatRelativeDate(review.created_at)}
+                    {formatRelativeDate(review.createdAt)}
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
                     className={`h-4 w-4 ${
                       i < review.rating
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-muted-foreground/30'
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-muted-foreground/30"
                     }`}
                   />
                 ))}
               </div>
             </div>
-            
+
             {review.title && (
               <h4 className="mt-3 font-medium">{review.title}</h4>
             )}
-            
+
             {review.content && (
               <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
                 {review.content}
               </p>
             )}
 
-            {!review.is_approved && (
+            {!review.approved && (
               <p className="mt-3 text-xs text-warning-foreground bg-warning/10 rounded px-2 py-1 inline-block">
                 Aguardando aprovação
               </p>
@@ -72,5 +72,5 @@ export function ReviewList({ reviews }: ReviewListProps) {
         ))}
       </div>
     </div>
-  )
+  );
 }

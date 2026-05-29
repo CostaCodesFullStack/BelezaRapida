@@ -31,9 +31,8 @@ export async function GET(request: NextRequest) {
       },
       select: {
         id: true,
-        orderNumber: true,
         customerEmail: true,
-        yampiOrderId: true,
+        yamipiOrderId: true,
         total: true,
         createdAt: true,
       },
@@ -46,18 +45,17 @@ export async function GET(request: NextRequest) {
       markedAsCancelled: 0,
       errors: 0,
       details: [] as Array<{
-        orderId: string
-        orderNumber: string
-        action: "paid" | "cancelled" | "error"
-        reason?: string
+        orderId: string;
+        action: "paid" | "cancelled" | "error";
+        reason?: string;
       }>,
     };
 
     for (const order of pendingOrders) {
       try {
         // Mock da consulta à API da Yampi
-        // Em produção, substituir por: await yampiClient.getOrderStatus(order.yampiOrderId)
-        const mockYampiStatus = simulateYampiStatus(order.yampiOrderId);
+        // Em produção, substituir por: await yampiClient.getOrderStatus(order.yamipiOrderId)
+        const mockYampiStatus = simulateYampiStatus(order.yamipiOrderId);
 
         if (mockYampiStatus === "paid") {
           await prisma.order.update({
@@ -73,7 +71,7 @@ export async function GET(request: NextRequest) {
           try {
             await sendOrderStatusUpdateEmail(
               order.customerEmail,
-              order.orderNumber,
+              order.id,
               "PAID",
             );
           } catch {
@@ -83,7 +81,6 @@ export async function GET(request: NextRequest) {
           summary.markedAsPaid++;
           summary.details.push({
             orderId: order.id,
-            orderNumber: order.orderNumber,
             action: "paid",
           });
         } else if (mockYampiStatus === "cancelled") {
@@ -98,7 +95,7 @@ export async function GET(request: NextRequest) {
           try {
             await sendOrderStatusUpdateEmail(
               order.customerEmail,
-              order.orderNumber,
+              order.id,
               "CANCELLED",
             );
           } catch {
@@ -108,19 +105,23 @@ export async function GET(request: NextRequest) {
           summary.markedAsCancelled++;
           summary.details.push({
             orderId: order.id,
-            orderNumber: order.orderNumber,
             action: "cancelled",
           });
         }
         // status "pending" — sem ação, aguardar próxima execução
       } catch (orderError) {
-        console.error(`[sync-payments] Erro ao processar pedido ${order.id}:`, orderError);
+        console.error(
+          `[sync-payments] Erro ao processar pedido ${order.id}:`,
+          orderError,
+        );
         summary.errors++;
         summary.details.push({
           orderId: order.id,
-          orderNumber: order.orderNumber,
           action: "error",
-          reason: orderError instanceof Error ? orderError.message : "Erro desconhecido",
+          reason:
+            orderError instanceof Error
+              ? orderError.message
+              : "Erro desconhecido",
         });
       }
     }
